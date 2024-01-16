@@ -1,0 +1,52 @@
+name: labo8-workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  tareas:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Descargar codigo
+      uses: actions/checkout@v4
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+          context: .
+          push: true
+          tags: mikelpe/app:latest
+
+    - name: Login to GC 
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GC_TOKEN }}
+        project_id: ${{ secrets.KUBERNETES_PROYECTO }}
+
+    - name: Configurar K8s
+      uses: simenandre/setup-gke-gcloud-auth-plugin@v1
+
+    - name: Configurar kubectl
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: labo8AS
+        location: us-central1
+
+    - name: Desplegar objetos 
+      run: |
+        kubectl apply -f ./k8s/frontend-service.yaml
+        kubectl apply -f ./k8s/frontend-deployment.yaml
+        kubectl rollout restart deployment frontend
+        
+
+
+    
